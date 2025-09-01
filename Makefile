@@ -151,20 +151,20 @@ update-vim: ~/.vim/autoload/plug.vim
 	curl -fLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 
 update-src:
-	$(call info,Update src repos)
+	@echo -e "\033[0;33mUpdate src...\033[0m"
 	@if [ -f ./scripts/git_update.sh ]; then \
 	  chmod +x ./scripts/git_update.sh; \
 	  if [ -f $(HOME)/etc/src_repositories.txt ]; then \
 	    if command -v timeout >/dev/null 2>&1; then \
-	      timeout $(PULL_TIMEOUT)s ./scripts/git_update.sh $(HOME)/src $(HOME)/etc/src_repositories.txt || true; \
+	      timeout 300s ./scripts/git_update.sh $(HOME)/src $(HOME)/etc/src_repositories.txt || true; \
 	    else \
 	      ./scripts/git_update.sh $(HOME)/src $(HOME)/etc/src_repositories.txt || true; \
 	    fi; \
 	  else \
-	    $(call warn,Missing ~/etc/src_repositories.txt); \
+	    echo "Warning: Missing ~/etc/src_repositories.txt"; \
 	  fi; \
 	else \
-	  $(call warn,Missing ./scripts/git_update.sh); \
+	  echo "Warning: Missing ./scripts/git_update.sh"; \
 	fi
 
 
