@@ -336,6 +336,16 @@ i3wsr:
 ~/.zplug:
 	curl -sL --proto-redir -all,https https://raw.githubusercontent.com/zplug/installer/master/installer.zsh | zsh
 
+link-local:
+	@echo -e "\033[0;33mSymlinking local...\033[0m"
+	@if [ -d local/$(HOST)/conf ]; then \
+	  stow -R -t ~ -d local/$(HOST)/conf $(LOCAL) 2>&1 | grep -v "BUG in find_stowed_path" || true; \
+	else \
+	  echo "No local config found for host $(HOST), skipping..."; \
+	fi
+
+
+
 ~/src/srcery-vim:
 	@mkdir -p $(@D)
 	git clone https://github.com/srcery-colors/srcery-vim ~/src/srcery-vim
