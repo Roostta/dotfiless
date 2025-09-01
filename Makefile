@@ -23,6 +23,7 @@
 	set-shell \
 	i3 \
 	rofi \
+	dunst \
 	update-tmux \
 	save-originals \
 	rustup \
@@ -32,9 +33,8 @@ HOST ?= $(shell hostname)
 NOW = $(shell date +"%Y-%m-%dT%T")
 TIMESTAMP = $(shell date +%s)
 VARS = ~/etc/local/$(HOST)/variables.mk
-CONF = $(shell ls conf 2>/dev/null || true)
-LOCAL = $(shell ls local/$(HOST)/conf 2>/dev/null || true)
-
+CONF = $(shell ls conf)
+LOCAL = $(shell [ -d local/$(HOST)/conf ] && ls local/$(HOST)/conf || echo "")
 DIRS = \
 	~/src \
 	~/lib \
@@ -64,6 +64,7 @@ update: update-zsh-plugins update-libs update-tmux update-vim update-rust
 links: link-conf link-misc link-local
 
 install: user-fs \
+	rustup \
 	install-paru \
 	install-packages \
 	install-aur-packages \
@@ -102,8 +103,9 @@ cleanup:
 	@echo "Cleaning up..."
 	-rm -rf ~/etc/build
 
-install-yay: ~/etc/build
+install-yay: ~/etc/build rustup
 	@echo "Installing yay..."
+	sudo pacman -S --needed --noconfirm base-devel git clang cmake make gcc pkgconf
 	@if ! command -v yay >/dev/null 2>&1; then \
 		cd ~/etc/build && git clone https://aur.archlinux.org/yay.git; \
 		cd ~/etc/build/yay && makepkg -si --noconfirm --needed; \
@@ -111,48 +113,37 @@ install-yay: ~/etc/build
 
 install-paru: ~/etc/build rustup
 	@echo "Installing paru..."
+	sudo pacman -S --needed --noconfirm base-devel git clang cmake make gcc pkgconf
 	@if ! command -v paru >/dev/null 2>&1; then \
 		cd ~/etc/build && git clone https://aur.archlinux.org/paru.git; \
 		cd ~/etc/build/paru && makepkg -si --noconfirm --needed; \
 	else echo "paru already installed."; fi
 
-add-pacman-repositories:
-	@echo "Adding pacman repositories..."
-	@if [ -f pacman_repositories.txt ]; then \
-		cat pacman_repositories.txt | sudo tee -a /etc/pacman.conf; \
-	else echo "No pacman_repositories.txt found, skipping..."; fi
-
-install-aur-packages: install-yay
+install-aur-packages: install-paru
 	@echo "Installing AUR packages..."
-	@if [ -f aur_packages.txt ]; then yay -S --needed --noconfirm - < aur_packages.txt; \
-	else echo "No aur_packages.txt found, skipping..."; fi
+	paru -S --needed --noconfirm - < aur_packages.txt
 
 install-packages:
 	@echo "Installing packages..."
-	@if [ -f pacman_packages.txt ]; then sudo pacman --needed -S - < pacman_packages.txt; \
-	else echo "No pacman_packages.txt found, skipping..."; fi
+	sudo pacman --needed -S - < pacman_packages.txt
 
-# Scaffold user fs structure.
 user-fs: $(DIRS)
 	@echo "Creating user fs..."
 
 $(DIRS):
 	mkdir -p $@
 
-~/.cache/zsh/dirs:
-	-touch ~/.cache/zsh/dirs
-
 update-zsh-plugins: ~/.zplug
 	@echo "Updating zsh plugins..."
-	chmod +x ./scripts/zsh-update.sh || true
+	chmod +x ./scripts/zsh-update.sh
 	./scripts/zsh-update.sh || true
 
 update-libs:
 	@echo "Updating libs..."
-	if [ -f ~/etc/lib_repositories.txt ]; then \
-		chmod +x ./scripts/git_update.sh || true; \
+	@if [ -f ~/etc/lib_repositories.txt ]; then \
+		chmod +x ./scripts/git_update.sh; \
 		./scripts/git_update.sh ~/lib ~/etc/lib_repositories.txt; \
-	else echo "Warning: Missing ~/etc/lib_repositories.txt"; fi
+	else echo "Warning: ~/etc/lib_repositories.txt missing, skipping libs update"; fi
 
 init-vim: ~/.vim/autoload/plug.vim
 	@echo "Initialize Vim..."
@@ -167,11 +158,11 @@ update-vim: ~/.vim/autoload/plug.vim
 	curl -fLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 
 update-src:
-	@echo "Updating src..."
-	if [ -f ~/etc/src_repositories.txt ]; then \
-		chmod +x ./scripts/git_update.sh || true; \
+	@echo "Update src..."
+	@if [ -f ~/etc/src_repositories.txt ]; then \
+		chmod +x ./scripts/git_update.sh; \
 		./scripts/git_update.sh ~/src ~/etc/src_repositories.txt; \
-	else echo "Warning: Missing ~/etc/src_repositories.txt"; fi
+	else echo "Warning: ~/etc/src_repositories.txt missing, skipping src update"; fi
 
 link-misc: ~/scripts ~/colors ~/bin/ftl ~/bin/touchpad-toggle ~/bin/tmain ~/bin/tupd
 	@echo "Symlinking misc files..."
@@ -191,100 +182,48 @@ link-misc: ~/scripts ~/colors ~/bin/ftl ~/bin/touchpad-toggle ~/bin/tmain ~/bin/
 ~/bin/tmain: user-fs
 	-ln -sf $(HOME)/scripts/tmux-main.sh $@
 
-~/bin/tmusic: user-fs
-	-ln -sf $(HOME)/scripts/tmux-music.sh $@
-
 ~/bin/tupd: user-fs
 	-ln -sf $(HOME)/scripts/tmux-update-window.sh $@
 
-~/bin/tssh: user-fs
-	-ln -sf $(HOME)/scripts/tmux-ssh.sh $@
-
 link-conf: user-fs
 	@echo "Symlinking conf..."
-	@if [ -n "$(CONF)" ]; then \
-		stow -R -t ~ -d conf --ignore="md|org|firefox" $(CONF) 2>&1 | grep -v "BUG in find_stowed_path" || true; \
-	else echo "No conf found, skipping..."; fi
+	-stow -R -t ~ -d conf --ignore="md|org|firefox" $(CONF) 2>&1 | grep -v "BUG in find_stowed_path" || true
 
 link-local:
 	@echo "Symlinking local..."
-	@if [ -n "$(LOCAL)" ]; then \
+	@if [ -d local/$(HOST)/conf ]; then \
 		stow -R -t ~ -d local/$(HOST)/conf $(LOCAL) 2>&1 | grep -v "BUG in find_stowed_path" || true; \
-	else echo "No local config found for host $(HOST), skipping..."; fi
+	else \
+		echo "No local config found for host $(HOST), skipping..."; \
+	fi
 
 set-shell:
 	@echo "Setting shell to zsh..."
-	-chsh -s `which zsh` || true
+	-chsh -s `which zsh`
 
-~/.dircolors: update-libs
-	-ln -s $(HOME)/lib/LS_COLORS/LS_COLORS $@
-
-~/.config/i3/config: link-conf
-	@echo "Creating i3 config..."
-	@if [ -d ~/etc/templates/i3 ]; then \
-		cd ~/etc/templates/i3 && cat *.i3 > $@; \
-	fi
-
-i3: ~/.config/i3/config
-	@echo "Reloading i3 config..."
-	-i3-msg reload || true
-
-~/.config/sway/config: link-conf
-	@echo "Creating sway config..."
-	@if [ -d ~/etc/templates/sway ]; then \
-		cd ~/etc/templates/sway && cat *.sway > $@; \
-	fi
-
-sway: ~/.config/sway/config
-	@echo "Reloading sway config..."
-	-swaymsg reload || true
-
-dunst: ~/.config/dunst/dunstrc
-	@echo "Creating dunst config..."
-
-~/.config/dunst/dunstrc: ~/etc/templates/dunst/config.dunst
-	@mkdir -p $(@D)
-	@if [ -f ~/etc/templates/dunst/config.dunst ]; then \
-		cat ~/etc/templates/dunst/config.dunst > ~/.config/dunst/dunstrc; \
-	fi
-
-~/.config/rofi/config.rasi: ~/etc/templates/rofi/config.rofi
-	@if [ -d ~/etc/templates/rofi ]; then \
-		cat ~/etc/templates/rofi/*.rofi > $@; \
-	fi
-
-rofi: ~/.config/rofi/config.rasi
-	@echo "Creating rofi config..."
+save-originals:
+	@echo "Saving originals..."
+	mkdir -p ~/backup/original-system-files
+	-@mv -f ~/.bash* ~/backup/original-system-files 2>/dev/null || true
 
 update-tmux: ~/.tmux/plugins/tpm
 	@echo "Updating tmux plugins..."
-	@if [ -f ~/.tmux/plugins/tpm/bin/update_plugins ]; then \
-		~/.tmux/plugins/tpm/bin/update_plugins all || true; \
-	else echo "Tmux Plugin Manager not installed properly"; fi
+	~/.tmux/plugins/tpm/bin/update_plugins all || true
 
 ~/.tmux/plugins/tpm:
 	@echo "Installing tmux plugin manager..."
 	@mkdir -p $(@D)
-	@if [ ! -d ~/.tmux/plugins/tpm ]; then \
-		git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm; \
-		~/.tmux/plugins/tpm/bin/install_plugins || true; \
-	fi
-
-save-originals:
-	mkdir -p ~/backup/original-system-files
-	-@mv ~/.bash* ~/backup/original-system-files 2>/dev/null || true
+	-@git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm && ~/.tmux/plugins/tpm/bin/install_plugins
 
 rustup:
-	@echo "Installing Rust..."
+	@echo "Installing Rust toolchain..."
 	@if ! command -v rustup >/dev/null 2>&1; then \
 		curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; \
 		export PATH="$$HOME/.cargo/bin:$$PATH"; \
 	fi
-	-rustup install stable || true
-	-rustup default stable || true
+	rustup install stable || true
+	rustup default stable || true
 
 update-rust:
+	@echo "Updating Rust..."
 	rustup update || true
-
-~/.zplug:
-	curl -sL --proto-redir -all,https https://raw.githubusercontent.com/zplug/installer/master/installer.zsh | zsh
