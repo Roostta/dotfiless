@@ -1,3 +1,13 @@
+curl -sL --proto-redir -all,https https://raw.githubusercontent.com/zplug/installer/master/installer.zsh | zsh
+
+if [ -f ~/.zplug/init.zsh ]; then
+    source ~/.zplug/init.zsh
+fi
+
+mkdir -p local/archlinux/conf
+
+
+
 .PHONY: \
 	default \
 	update \
@@ -143,19 +153,11 @@ update-zsh-plugins: ~/.zplug
 
 update-libs:
 	@echo -e "\033[0;33mUpdate libs...\033[0m"
-	@if [ -f ./scripts/git_update.sh ]; then \
+	@if [ -f ~/etc/lib_repositories.txt ]; then \
 	  chmod +x ./scripts/git_update.sh; \
-	  if [ -f $(HOME)/etc/lib_repositories.txt ]; then \
-	    if command -v timeout >/dev/null 2>&1; then \
-	      timeout 300s ./scripts/git_update.sh $(HOME)/lib $(HOME)/etc/lib_repositories.txt || true; \
-	    else \
-	      ./scripts/git_update.sh $(HOME)/lib $(HOME)/etc/lib_repositories.txt || true; \
-	    fi; \
-	  else \
-	    echo "Warning: Missing ~/etc/lib_repositories.txt"; \
-	  fi; \
+	  ./scripts/git_update.sh ~/lib ~/etc/lib_repositories.txt || true; \
 	else \
-	  echo "Warning: Missing ./scripts/git_update.sh"; \
+	  echo "Skipping update-libs, missing ~/etc/lib_repositories.txt"; \
 	fi
 
 
@@ -197,19 +199,11 @@ update-vim: ~/.vim/autoload/plug.vim
 
 update-src:
 	@echo -e "\033[0;33mUpdate src...\033[0m"
-	@if [ -f ./scripts/git_update.sh ]; then \
+	@if [ -f ~/etc/src_repositories.txt ]; then \
 	  chmod +x ./scripts/git_update.sh; \
-	  if [ -f $(HOME)/etc/src_repositories.txt ]; then \
-	    if command -v timeout >/dev/null 2>&1; then \
-	      timeout 300s ./scripts/git_update.sh $(HOME)/src $(HOME)/etc/src_repositories.txt || true; \
-	    else \
-	      ./scripts/git_update.sh $(HOME)/src $(HOME)/etc/src_repositories.txt || true; \
-	    fi; \
-	  else \
-	    echo "Warning: Missing ~/etc/src_repositories.txt"; \
-	  fi; \
+	  ./scripts/git_update.sh ~/src ~/etc/src_repositories.txt || true; \
 	else \
-	  echo "Warning: Missing ./scripts/git_update.sh"; \
+	  echo "Skipping update-src, missing ~/etc/src_repositories.txt"; \
 	fi
 
 
