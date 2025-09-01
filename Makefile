@@ -159,6 +159,9 @@ update-libs:
 	fi
 
 
+LOCAL = $(shell [ -d local/$(HOST)/conf ] && ls local/$(HOST)/conf || echo "")
+
+
 link-local:
 	@echo -e "\033[0;33mSymlinking local...\033[0m"
 	@if [ -d local/$(HOST)/conf ]; then \
