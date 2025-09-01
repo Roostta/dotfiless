@@ -151,9 +151,22 @@ update-vim: ~/.vim/autoload/plug.vim
 	curl -fLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 
 update-src:
-	@echo -e "\033[0;33mUpdate src...\033[0m"
-	# ssh-add -l &>/dev/null || ssh-add ~/.ssh/id_rsa
-	./scripts/git_update.sh ~/src ~/etc/src_repositories.txt
+	$(call info,Update src repos)
+	@if [ -f ./scripts/git_update.sh ]; then \
+	  chmod +x ./scripts/git_update.sh; \
+	  if [ -f $(HOME)/etc/src_repositories.txt ]; then \
+	    if command -v timeout >/dev/null 2>&1; then \
+	      timeout $(PULL_TIMEOUT)s ./scripts/git_update.sh $(HOME)/src $(HOME)/etc/src_repositories.txt || true; \
+	    else \
+	      ./scripts/git_update.sh $(HOME)/src $(HOME)/etc/src_repositories.txt || true; \
+	    fi; \
+	  else \
+	    $(call warn,Missing ~/etc/src_repositories.txt); \
+	  fi; \
+	else \
+	  $(call warn,Missing ./scripts/git_update.sh); \
+	fi
+
 
 link-misc: ~/scripts ~/colors ~/bin/ftl ~/bin/touchpad-toggle ~/bin/tmain ~/bin/tupd
 	@echo -e "\033[0;33mSymlinking misc files...\033[0m"
