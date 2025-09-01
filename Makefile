@@ -30,27 +30,28 @@
 
 HOST ?= $(shell hostname)
 NOW = $(shell date +"%Y-%m-%dT%T")
-TIMESTAMP=$(shell date +%s)
+TIMESTAMP = $(shell date +%s)
 VARS = ~/etc/local/$(HOST)/variables.mk
-CONF = $(shell ls conf 2>/dev/null || echo "")
-LOCAL = $(shell ls local/$(HOST)/conf 2>/dev/null || echo "")
+CONF = $(shell ls conf 2>/dev/null || true)
+LOCAL = $(shell ls local/$(HOST)/conf 2>/dev/null || true)
+
 DIRS = \
-	 ~/src \
-	 ~/lib \
-	 ~/mnt \
-	 ~/tmp \
-	 ~/bin \
-	 ~/opt \
-	 ~/sbin \
-	 ~/var/log \
-	 ~/var/vim/undo \
-	 ~/.cache/vim/backup \
-	 ~/.cache/zsh \
-	 ~/backup \
-	 ~/.local/share \
-	 ~/.config/dunst \
-	 ~/.local/share/applications \
-	 ~/etc/build
+	~/src \
+	~/lib \
+	~/mnt \
+	~/tmp \
+	~/bin \
+	~/opt \
+	~/sbin \
+	~/var/log \
+	~/var/vim/undo \
+	~/.cache/vim/backup \
+	~/.cache/zsh \
+	~/backup \
+	~/.local/share \
+	~/.config/dunst \
+	~/.local/share/applications \
+	~/etc/build
 
 ifneq ("$(wildcard $(VARS))","")
 include $(VARS)
@@ -92,41 +93,44 @@ min: min-install \
 min-update: update-libs update-zsh-plugins update-tmux update-vim
 
 min-install:
-	@echo "Installing minimal packages..."
-	@if [ -f min_packages.txt ]; then xargs sudo apt-get install -y < min_packages.txt; else echo "No min_packages.txt found, skipping."; fi
+	xargs sudo apt-get install -y < min_packages.txt
 
 min-links:
-	stow -R -t ~ -d conf zsh git tmux vim bash nvim || true
+	stow -R -t ~ -d conf zsh git tmux vim bash nvim
 
 cleanup:
-	@echo -e "\033[0;33mCleaning up...\033[0m"
+	@echo "Cleaning up..."
 	-rm -rf ~/etc/build
 
 install-yay: ~/etc/build
 	@echo "Installing yay..."
 	@if ! command -v yay >/dev/null 2>&1; then \
-		cd ~/etc/build && git clone https://aur.archlinux.org/yay.git && cd yay && makepkg -si --noconfirm --needed; \
+		cd ~/etc/build && git clone https://aur.archlinux.org/yay.git; \
+		cd ~/etc/build/yay && makepkg -si --noconfirm --needed; \
 	else echo "yay already installed."; fi
 
-install-paru: ~/etc/build
+install-paru: ~/etc/build rustup
 	@echo "Installing paru..."
 	@if ! command -v paru >/dev/null 2>&1; then \
-		cd ~/etc/build && git clone https://aur.archlinux.org/paru.git && cd paru && makepkg -si --noconfirm --needed; \
+		cd ~/etc/build && git clone https://aur.archlinux.org/paru.git; \
+		cd ~/etc/build/paru && makepkg -si --noconfirm --needed; \
 	else echo "paru already installed."; fi
 
 add-pacman-repositories:
 	@echo "Adding pacman repositories..."
 	@if [ -f pacman_repositories.txt ]; then \
 		cat pacman_repositories.txt | sudo tee -a /etc/pacman.conf; \
-	else echo "No pacman_repositories.txt found, skipping."; fi
+	else echo "No pacman_repositories.txt found, skipping..."; fi
 
 install-aur-packages: install-yay
 	@echo "Installing AUR packages..."
-	@if [ -f aur_packages.txt ]; then yay -S --needed --noconfirm - < aur_packages.txt; else echo "No aur_packages.txt found, skipping."; fi
+	@if [ -f aur_packages.txt ]; then yay -S --needed --noconfirm - < aur_packages.txt; \
+	else echo "No aur_packages.txt found, skipping..."; fi
 
 install-packages:
-	@echo "Installing system packages..."
-	@if [ -f pacman_packages.txt ]; then sudo pacman --needed -S - < pacman_packages.txt; else echo "No pacman_packages.txt found, skipping."; fi
+	@echo "Installing packages..."
+	@if [ -f pacman_packages.txt ]; then sudo pacman --needed -S - < pacman_packages.txt; \
+	else echo "No pacman_packages.txt found, skipping..."; fi
 
 # Scaffold user fs structure.
 user-fs: $(DIRS)
@@ -138,50 +142,73 @@ $(DIRS):
 ~/.cache/zsh/dirs:
 	-touch ~/.cache/zsh/dirs
 
-update-zsh-plugins:
+update-zsh-plugins: ~/.zplug
 	@echo "Updating zsh plugins..."
-	@if [ -f ./scripts/zsh-update.sh ]; then chmod +x ./scripts/zsh-update.sh && ./scripts/zsh-update.sh; else echo "zsh-update.sh missing, skipping."; fi
+	chmod +x ./scripts/zsh-update.sh || true
+	./scripts/zsh-update.sh || true
 
 update-libs:
 	@echo "Updating libs..."
-	@if [ -f ./scripts/git_update.sh ]; then chmod +x ./scripts/git_update.sh; else echo "git_update.sh missing, skipping libs update."; exit 0; fi
-	@if [ -f ~/etc/lib_repositories.txt ]; then ./scripts/git_update.sh ~/lib ~/etc/lib_repositories.txt; else echo "Missing ~/etc/lib_repositories.txt, skipping."; fi
+	if [ -f ~/etc/lib_repositories.txt ]; then \
+		chmod +x ./scripts/git_update.sh || true; \
+		./scripts/git_update.sh ~/lib ~/etc/lib_repositories.txt; \
+	else echo "Warning: Missing ~/etc/lib_repositories.txt"; fi
 
 init-vim: ~/.vim/autoload/plug.vim
 	@echo "Initialize Vim..."
-	vim -c "silent! exec InstallAndExit()" || true
+	vim -c "exec InstallAndExit()"
 
 update-vim: ~/.vim/autoload/plug.vim
 	@echo "Updating Vim packages..."
-	vim -c "silent! exec UpdateAndExit()" || true
+	vim -c "exec UpdateAndExit()"
 
 ~/.vim/autoload/plug.vim:
-	@echo "Getting vim-plug..."
+	@echo "Installing vim-plug..."
 	curl -fLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 
 update-src:
 	@echo "Updating src..."
-	@if [ -f ./scripts/git_update.sh ]; then chmod +x ./scripts/git_update.sh; else echo "git_update.sh missing, skipping src update."; exit 0; fi
-	@if [ -f ~/etc/src_repositories.txt ]; then ./scripts/git_update.sh ~/src ~/etc/src_repositories.txt; else echo "Missing ~/etc/src_repositories.txt, skipping."; fi
+	if [ -f ~/etc/src_repositories.txt ]; then \
+		chmod +x ./scripts/git_update.sh || true; \
+		./scripts/git_update.sh ~/src ~/etc/src_repositories.txt; \
+	else echo "Warning: Missing ~/etc/src_repositories.txt"; fi
 
-link-misc:
+link-misc: ~/scripts ~/colors ~/bin/ftl ~/bin/touchpad-toggle ~/bin/tmain ~/bin/tupd
 	@echo "Symlinking misc files..."
-	-ln -sf $(HOME)/src/scripts $(HOME) || true
-	-ln -sf $(HOME)/src/colors $(HOME) || true
-	-ln -sf $(HOME)/etc/scripts/ftl.sh ~/bin/ftl || true
-	-ln -sf $(HOME)/src/scripts/touchpad-toggle.sh ~/bin/touchpad-toggle || true
-	-ln -sf $(HOME)/scripts/tmux-main.sh ~/bin/tmain || true
-	-ln -sf $(HOME)/scripts/tmux-music.sh ~/bin/tmusic || true
-	-ln -sf $(HOME)/scripts/tmux-update-window.sh ~/bin/tupd || true
-	-ln -sf $(HOME)/scripts/tmux-ssh.sh ~/bin/tssh || true
+
+~/scripts: user-fs
+	-ln -sf $(HOME)/src/scripts $(HOME)
+
+~/colors: user-fs
+	-ln -sf $(HOME)/src/colors $(HOME)
+
+~/bin/ftl: user-fs
+	-ln -sf $(HOME)/etc/scripts/ftl.sh $@
+
+~/bin/touchpad-toggle: user-fs update-src
+	-ln -sf $(HOME)/src/scripts/touchpad-toggle.sh $@
+
+~/bin/tmain: user-fs
+	-ln -sf $(HOME)/scripts/tmux-main.sh $@
+
+~/bin/tmusic: user-fs
+	-ln -sf $(HOME)/scripts/tmux-music.sh $@
+
+~/bin/tupd: user-fs
+	-ln -sf $(HOME)/scripts/tmux-update-window.sh $@
+
+~/bin/tssh: user-fs
+	-ln -sf $(HOME)/scripts/tmux-ssh.sh $@
 
 link-conf: user-fs
 	@echo "Symlinking conf..."
-	@if [ -d conf ]; then stow -R -t ~ -d conf --ignore="md|org|firefox" $(CONF) 2>&1 | grep -v "BUG in find_stowed_path" || true; else echo "No conf dir found."; fi
+	@if [ -n "$(CONF)" ]; then \
+		stow -R -t ~ -d conf --ignore="md|org|firefox" $(CONF) 2>&1 | grep -v "BUG in find_stowed_path" || true; \
+	else echo "No conf found, skipping..."; fi
 
 link-local:
 	@echo "Symlinking local..."
-	@if [ -d local/$(HOST)/conf ]; then \
+	@if [ -n "$(LOCAL)" ]; then \
 		stow -R -t ~ -d local/$(HOST)/conf $(LOCAL) 2>&1 | grep -v "BUG in find_stowed_path" || true; \
 	else echo "No local config found for host $(HOST), skipping..."; fi
 
@@ -189,35 +216,75 @@ set-shell:
 	@echo "Setting shell to zsh..."
 	-chsh -s `which zsh` || true
 
-save-originals:
-	@echo "Saving original system files..."
-	mkdir -p ~/backup/original-system-files
-	-@mv -f ~/.bash* ~/backup/original-system-files 2>/dev/null || true
+~/.dircolors: update-libs
+	-ln -s $(HOME)/lib/LS_COLORS/LS_COLORS $@
 
-update-tmux:
-	@echo "Updating tmux plugins..."
-	@if [ -d ~/.tmux/plugins/tpm ]; then \
-		~/.tmux/plugins/tpm/bin/update_plugins all || true; \
-	else \
-		echo "TPM not installed, installing..."; \
-		git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm && ~/.tmux/plugins/tpm/bin/install_plugins; \
+~/.config/i3/config: link-conf
+	@echo "Creating i3 config..."
+	@if [ -d ~/etc/templates/i3 ]; then \
+		cd ~/etc/templates/i3 && cat *.i3 > $@; \
 	fi
 
+i3: ~/.config/i3/config
+	@echo "Reloading i3 config..."
+	-i3-msg reload || true
+
+~/.config/sway/config: link-conf
+	@echo "Creating sway config..."
+	@if [ -d ~/etc/templates/sway ]; then \
+		cd ~/etc/templates/sway && cat *.sway > $@; \
+	fi
+
+sway: ~/.config/sway/config
+	@echo "Reloading sway config..."
+	-swaymsg reload || true
+
+dunst: ~/.config/dunst/dunstrc
+	@echo "Creating dunst config..."
+
+~/.config/dunst/dunstrc: ~/etc/templates/dunst/config.dunst
+	@mkdir -p $(@D)
+	@if [ -f ~/etc/templates/dunst/config.dunst ]; then \
+		cat ~/etc/templates/dunst/config.dunst > ~/.config/dunst/dunstrc; \
+	fi
+
+~/.config/rofi/config.rasi: ~/etc/templates/rofi/config.rofi
+	@if [ -d ~/etc/templates/rofi ]; then \
+		cat ~/etc/templates/rofi/*.rofi > $@; \
+	fi
+
+rofi: ~/.config/rofi/config.rasi
+	@echo "Creating rofi config..."
+
+update-tmux: ~/.tmux/plugins/tpm
+	@echo "Updating tmux plugins..."
+	@if [ -f ~/.tmux/plugins/tpm/bin/update_plugins ]; then \
+		~/.tmux/plugins/tpm/bin/update_plugins all || true; \
+	else echo "Tmux Plugin Manager not installed properly"; fi
+
+~/.tmux/plugins/tpm:
+	@echo "Installing tmux plugin manager..."
+	@mkdir -p $(@D)
+	@if [ ! -d ~/.tmux/plugins/tpm ]; then \
+		git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm; \
+		~/.tmux/plugins/tpm/bin/install_plugins || true; \
+	fi
+
+save-originals:
+	mkdir -p ~/backup/original-system-files
+	-@mv ~/.bash* ~/backup/original-system-files 2>/dev/null || true
+
 rustup:
-	rustup install stable || true
-	rustup install nightly || true
-	rustup default stable || true
+	@echo "Installing Rust..."
+	@if ! command -v rustup >/dev/null 2>&1; then \
+		curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; \
+		export PATH="$$HOME/.cargo/bin:$$PATH"; \
+	fi
+	-rustup install stable || true
+	-rustup default stable || true
 
 update-rust:
 	rustup update || true
 
 ~/.zplug:
 	curl -sL --proto-redir -all,https https://raw.githubusercontent.com/zplug/installer/master/installer.zsh | zsh
-
-~/src/srcery-vim:
-	@mkdir -p $(@D)
-	git clone https://github.com/srcery-colors/srcery-vim ~/src/srcery-vim
-
-~/src/srcery-terminal:
-	@mkdir -p $(@D)
-	git clone https://github.com/srcery-colors/srcery-terminal ~/src/srcery-terminal
