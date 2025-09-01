@@ -2,6 +2,8 @@ curl -sL --proto-redir -all,https https://raw.githubusercontent.com/zplug/instal
 if [ -f ~/.zplug/init.zsh ]; then
     source ~/.zplug/init.zsh
 fi
+
+
 mkdir -p local/archlinux/conf
 .PHONY: \
 	default \
