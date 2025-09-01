@@ -292,7 +292,12 @@ rofi: ~/.config/rofi/config.rasi
 
 update-tmux:
 	@echo -e "\033[0;33mUpdating tmux plugins...\033[0m"
-	~/.tmux/plugins/tpm/bin/update_plugins all
+	@if [ -x ~/.tmux/plugins/tpm/bin/update_plugins ]; then \
+	  ~/.tmux/plugins/tpm/bin/update_plugins all || true; \
+	else \
+	  echo "Warning: TPM not installed or tmux.conf not configured"; \
+	fi
+
 
 ~/.tmux/plugins/tpm:
 	@echo -e "\033[0;33mInitialize tmux...\033[0m"
