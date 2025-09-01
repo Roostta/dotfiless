@@ -169,6 +169,16 @@ link-local:
 	else \
 	  echo "No local config found for host $(HOST), skipping..."; \
 	fi
+link-local:
+	@echo -e "\033[0;33mSymlinking local...\033[0m"
+	@if [ -d local/$(HOST)/conf ]; then \
+	  stow -R -t ~ -d local/$(HOST)/conf $(LOCAL) 2>&1 | grep -v "BUG in find_stowed_path" || true; \
+	elif [ -d local/default/conf ]; then \
+	  echo "No host config found, using default..."; \
+	  stow -R -t ~ -d local/default/conf 2>&1 | grep -v "BUG in find_stowed_path" || true; \
+	else \
+	  echo "No local config found at all, skipping."; \
+	fi
 
 
 
