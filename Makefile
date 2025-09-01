@@ -136,7 +136,22 @@ update-zsh-plugins: ~/.zplug
 	./scripts/zsh-update.sh
 
 update-libs:
-	./scripts/git_update.sh ~/lib ~/etc/lib_repositories.txt
+	@echo -e "\033[0;33mUpdate libs...\033[0m"
+	@if [ -f ./scripts/git_update.sh ]; then \
+	  chmod +x ./scripts/git_update.sh; \
+	  if [ -f $(HOME)/etc/lib_repositories.txt ]; then \
+	    if command -v timeout >/dev/null 2>&1; then \
+	      timeout 300s ./scripts/git_update.sh $(HOME)/lib $(HOME)/etc/lib_repositories.txt || true; \
+	    else \
+	      ./scripts/git_update.sh $(HOME)/lib $(HOME)/etc/lib_repositories.txt || true; \
+	    fi; \
+	  else \
+	    echo "Warning: Missing ~/etc/lib_repositories.txt"; \
+	  fi; \
+	else \
+	  echo "Warning: Missing ./scripts/git_update.sh"; \
+	fi
+
 
 init-vim: ~/.vim/autoload/plug.vim
 	@echo -e "\033[0;33mInitialize Vim...\033[0m"
