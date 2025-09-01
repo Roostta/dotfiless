@@ -1,6 +1,6 @@
 .PHONY: \
 	default update links install min min-update min-install min-links \
-	install-yay install-paru install-aur-packages install-packages \
+	install-yay install-aur-packages install-packages \
 	user-fs update-zsh-plugins update-libs init-vim update-vim update-src \
 	link-misc link-conf link-local set-shell i3 sway rofi dunst \
 	update-tmux save-originals rustup update-rust
@@ -40,7 +40,7 @@ update: update-zsh-plugins update-libs update-tmux update-vim update-rust
 links: link-conf link-misc link-local
 
 install: user-fs \
-	install-paru \
+	install-yay \
 	install-packages \
 	install-aur-packages \
 	save-originals \
@@ -69,7 +69,7 @@ cleanup:
 	@echo -e "\033[0;33mCleaning up...\033[0m"
 	-rm -rf ~/etc/build
 
-### AUR helpers
+### AUR helper (yay only)
 install-yay: ~/etc/build rustup
 	@echo "Installing yay..."
 	sudo pacman -S --needed --noconfirm base-devel git clang cmake make gcc pkgconf
@@ -77,17 +77,6 @@ install-yay: ~/etc/build rustup
 		cd ~/etc/build && git clone https://aur.archlinux.org/yay.git; \
 		cd ~/etc/build/yay && env PATH="$$HOME/.cargo/bin:$$PATH" makepkg -si --noconfirm --needed; \
 	else echo "yay already installed."; fi
-
-install-paru: ~/etc/build rustup
-	@echo "Installing paru..."
-	sudo pacman -S --needed --noconfirm base-devel git clang cmake make gcc pkgconf
-	@if ! command -v paru >/dev/null 2>&1; then \
-		export PATH="$$HOME/.cargo/bin:$$PATH"; \
-		rustup install stable --quiet --profile minimal --component rustfmt clippy; \
-		rustup default stable; \
-		cd ~/etc/build && git clone https://aur.archlinux.org/paru.git; \
-		cd ~/etc/build/paru && env PATH="$$HOME/.cargo/bin:$$PATH" makepkg -si --noconfirm --needed; \
-	else echo "paru already installed."; fi
 
 add-pacman-repositories:
 	@echo "Adding pacman repositories..."
