@@ -21,7 +21,7 @@ First of this repo needs to be cloned, and assuming you are running Arch Linux
 calling `make install` should in theory setup a fresh system, but I haven't
 tested this rule in a while so it probably needs some attention.
 ```shell
-git clone https://github.com/roosta/etc && cd etc && make install
+git clone https://github.com/roosta/etc && cd dotfiless && make install
 ```
 
 git needs to be installed prior to the setup.
