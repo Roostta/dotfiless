@@ -159,6 +159,17 @@ update-libs:
 	fi
 
 
+link-local:
+	@echo -e "\033[0;33mSymlinking local...\033[0m"
+	@if [ -d local/$(HOST)/conf ]; then \
+	  stow -R -t ~ -d local/$(HOST)/conf $(LOCAL) 2>&1 | grep -v "BUG in find_stowed_path" || true; \
+	else \
+	  echo "No local config found for host $(HOST), skipping..."; \
+	fi
+
+
+
+
 init-vim: ~/.vim/autoload/plug.vim
 	@echo -e "\033[0;33mInitialize Vim...\033[0m"
 	vim -c "exec InstallAndExit()"
