@@ -133,7 +133,13 @@ $(DIRS):
 
 update-zsh-plugins: ~/.zplug
 	@echo -e "\033[0;33mUpdating zsh plugins...\033[0m"
-	./scripts/zsh-update.sh
+	@if [ -f ./scripts/zsh-update.sh ]; then \
+	  chmod +x ./scripts/zsh-update.sh; \
+	  ./scripts/zsh-update.sh || true; \
+	else \
+	  echo "Warning: Missing ./scripts/zsh-update.sh"; \
+	fi
+
 
 update-libs:
 	@echo -e "\033[0;33mUpdate libs...\033[0m"
